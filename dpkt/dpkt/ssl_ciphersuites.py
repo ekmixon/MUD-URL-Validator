@@ -41,17 +41,11 @@ class CipherSuite(object):
 
     @property
     def kx(self):
-        if self._kx == '': # for PSK
-            return self._auth
-        else:
-            return self._kx
+        return self._auth if self._kx == '' else self._kx
 
     @property
     def auth(self):
-        if self._auth == '': # for RSA
-            return self._kx
-        else:
-            return self._auth
+        return self._kx if self._auth == '' else self._auth
 
     @property
     def kx_auth(self):
@@ -60,30 +54,26 @@ class CipherSuite(object):
         elif self._kx == '': # for PSK
             return self._auth
         else:
-            return self._kx + '_' + self._auth
+            return f'{self._kx}_{self._auth}'
 
     @property
     def encoding(self):
         if self._encoding is None:
-            if self.mode == '':
-                return self.cipher
-            else:
-                return self.cipher + '_' + self.mode
+            return self.cipher if self.mode == '' else f'{self.cipher}_{self.mode}'
         else:
             return self._encoding
 
     @property
     def name(self):
-        if self._name is None:
-            if self.mac == '': # for CCM and CCM_8 modes
-                return 'TLS_' + self.kx_auth + '_WITH_' + self.encoding
-            else:
-                return 'TLS_' + self.kx_auth + '_WITH_' + self.encoding + '_' + self.mac
-        else:
+        if self._name is not None:
             return self._name
+        if self.mac == '': # for CCM and CCM_8 modes
+            return f'TLS_{self.kx_auth}_WITH_{self.encoding}'
+        else:
+            return f'TLS_{self.kx_auth}_WITH_{self.encoding}_{self.mac}'
 
     def __repr__(self):
-        return 'CipherSuite(%s)' % self.name
+        return f'CipherSuite({self.name})'
 
     MAC_SIZES = {
         'MD5': 16,
@@ -540,8 +530,7 @@ CIPHERSUITES = [
 
 ]
 
-BY_CODE = dict(
-    (cipher.code, cipher) for cipher in CIPHERSUITES)
+BY_CODE = {cipher.code: cipher for cipher in CIPHERSUITES}
 
 # This is a function to avoid artificially increased coverage
 BY_NAME_DICT = None
@@ -549,7 +538,7 @@ def BY_NAME(name):
     # We initialize the dictionary only on the first call
     global BY_NAME_DICT
     if BY_NAME_DICT is None:
-        BY_NAME_DICT = dict((suite.name, suite) for suite in CIPHERSUITES)
+        BY_NAME_DICT = {suite.name: suite for suite in CIPHERSUITES}
     return BY_NAME_DICT[name]
 
 NULL_SUITE = BY_CODE[0x0000]

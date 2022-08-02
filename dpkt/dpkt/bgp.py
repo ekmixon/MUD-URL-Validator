@@ -343,10 +343,7 @@ class BGP(dpkt.Packet):
                     self.data = self.mp_unreach_nlri = self.MPUnreachNLRI(self.data)
 
             def __len__(self):
-                if self.extended_length:
-                    attr_len = 2
-                else:
-                    attr_len = 1
+                attr_len = 2 if self.extended_length else 1
                 return self.__hdr_len__ + attr_len + len(self.data)
 
             def __bytes__(self):
@@ -390,7 +387,7 @@ class BGP(dpkt.Packet):
                     def unpack(self, buf):
                         dpkt.Packet.unpack(self, buf)
                         l = []
-                        for i in range(self.len):
+                        for _ in range(self.len):
                             AS = struct.unpack('>H', self.data[:2])[0]
                             self.data = self.data[2:]
                             l.append(AS)
@@ -518,7 +515,7 @@ class BGP(dpkt.Packet):
                     l = []
                     num_snpas = struct.unpack('B', self.data[:1])[0]
                     self.data = self.data[1:]
-                    for i in range(num_snpas):
+                    for _ in range(num_snpas):
                         snpa = self.SNPA(self.data)
                         self.data = self.data[len(snpa):]
                         l.append(snpa)
@@ -643,7 +640,7 @@ class RouteIPV4(dpkt.Packet):
 
     def __repr__(self):
         cidr = '%s/%d' % (socket.inet_ntoa(self.prefix), self.len)
-        return '%s(%s)' % (self.__class__.__name__, cidr)
+        return f'{self.__class__.__name__}({cidr})'
 
     def __len__(self):
         return self.__hdr_len__ + (self.len + 7) // 8

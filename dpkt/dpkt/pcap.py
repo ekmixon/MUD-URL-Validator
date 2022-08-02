@@ -239,7 +239,7 @@ class Reader(object):
     """
 
     def __init__(self, fileobj):
-        self.name = getattr(fileobj, 'name', '<%s>' % fileobj.__class__.__name__)
+        self.name = getattr(fileobj, 'name', f'<{fileobj.__class__.__name__}>')
         self.__f = fileobj
         buf = self.__f.read(FileHdr.__hdr_len__)
         self.__fh = FileHdr(buf)
@@ -249,10 +249,7 @@ class Reader(object):
             self.__ph = LEPktHdr
         elif self.__fh.magic not in (TCPDUMP_MAGIC, TCPDUMP_MAGIC_NANO):
             raise ValueError('invalid tcpdump header')
-        if self.__fh.linktype in dltoff:
-            self.dloff = dltoff[self.__fh.linktype]
-        else:
-            self.dloff = 0
+        self.dloff = dltoff[self.__fh.linktype] if self.__fh.linktype in dltoff else 0
         self._divisor = 1E6 if self.__fh.magic in (TCPDUMP_MAGIC, PMUDPCT_MAGIC) else Decimal('1E9')
         self.snaplen = self.__fh.snaplen
         self.filter = ''

@@ -66,26 +66,20 @@ DNS_ANY = 255
 
 
 def pack_name(name, off, label_ptrs):
-    name = codecs.encode(name, 'utf-8')
-    if name:
-        labels = name.split(b'.')
-    else:
-        labels = []
+    labels = name.split(b'.') if (name := codecs.encode(name, 'utf-8')) else []
     labels.append(b'')
     buf = b''
     for i, label in enumerate(labels):
         key = b'.'.join(labels[i:]).upper()
-        ptr = label_ptrs.get(key)
-        if not ptr:
+        if ptr := label_ptrs.get(key):
+            buf += struct.pack('>H', (0xc000 | ptr))
+            break
+        else:
             if len(key) > 1:
                 ptr = off + len(buf)
                 if ptr < 0xc000:
                     label_ptrs[key] = ptr
-            i = len(label)
-            buf += struct.pack("B", i) + label
-        else:
-            buf += struct.pack('>H', (0xc000 | ptr))
-            break
+            buf += struct.pack("B", len(label)) + label
     return buf
 
 
@@ -266,26 +260,25 @@ class DNS(dpkt.Packet):
             elif self.type == DNS_PTR:
                 return pack_name(self.ptrname, off, label_ptrs)
             elif self.type == DNS_SOA:
-                l = []
-                l.append(pack_name(self.mname, off, label_ptrs))
+                l = [pack_name(self.mname, off, label_ptrs)]
                 l.append(pack_name(self.rname, off + len(l[0]), label_ptrs))
                 l.append(struct.pack('>IIIII', self.serial, self.refresh,
                                      self.retry, self.expire, self.minimum))
                 return b''.join(l)
             elif self.type == DNS_MX:
                 return struct.pack('>H', self.preference) + \
-                       pack_name(self.mxname, off + 2, label_ptrs)
-            elif self.type == DNS_TXT or self.type == DNS_HINFO:
+                               pack_name(self.mxname, off + 2, label_ptrs)
+            elif self.type in [DNS_TXT, DNS_HINFO]:
                 return b''.join(struct.pack('B', len(x)) + x for x in self.text)
             elif self.type == DNS_AAAA:
                 return self.ip6
             elif self.type == DNS_SRV:
                 return struct.pack('>HHH', self.priority, self.weight, self.port) + \
-                       pack_name(self.srvname, off + 6, label_ptrs)
+                               pack_name(self.srvname, off + 6, label_ptrs)
             elif self.type == DNS_OPT:
                 return b''  # self.rdata
             else:
-                raise dpkt.PackError('RR type %s is not supported' % self.type)
+                raise dpkt.PackError(f'RR type {self.type} is not supported')
 
         def unpack_rdata(self, buf, off):
             if self.type == DNS_A:
@@ -300,11 +293,11 @@ class DNS(dpkt.Packet):
                 self.mname, off = unpack_name(buf, off)
                 self.rname, off = unpack_name(buf, off)
                 self.serial, self.refresh, self.retry, self.expire, \
-                self.minimum = struct.unpack('>IIIII', buf[off:off + 20])
+                        self.minimum = struct.unpack('>IIIII', buf[off:off + 20])
             elif self.type == DNS_MX:
                 self.preference = struct.unpack('>H', self.rdata[:2])
                 self.mxname, off = unpack_name(buf, off + 2)
-            elif self.type == DNS_TXT or self.type == DNS_HINFO:
+            elif self.type in [DNS_TXT, DNS_HINFO]:
                 self.text = []
                 buf = self.rdata
                 while buf:
@@ -318,10 +311,8 @@ class DNS(dpkt.Packet):
             elif self.type == DNS_SRV:
                 self.priority, self.weight, self.port = struct.unpack('>HHH', self.rdata[:6])
                 self.srvname, off = unpack_name(buf, off + 6)
-            elif self.type == DNS_OPT:
-                pass  # RFC-6891: OPT is a pseudo-RR not carrying any DNS data
-            else:
-                raise dpkt.UnpackError('RR type %s is not supported' % self.type)
+            elif self.type != DNS_OPT:
+                raise dpkt.UnpackError(f'RR type {self.type} is not supported')
 
     def pack_q(self, buf, q):
         """Append packed DNS question and return buf."""

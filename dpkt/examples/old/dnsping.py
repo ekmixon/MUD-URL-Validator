@@ -31,19 +31,16 @@ class DNSPing(ping.Ping):
             dns = dpkt.dns.DNS(id=i)
             if opts.norecurse:
                 dns.op &= ~dpkt.dns.DNS_RD
-            if not opts.hostname:
-                name = '%s.%s' % (str(random.random())[-6:], opts.zone)
-            else:
-                name = opts.hostname
+            name = opts.hostname or f'{str(random.random())[-6:]}.{opts.zone}'
             dns.qd = [dpkt.dns.DNS.Q(name=name)]
             yield str(dns)
 
     def print_header(self, opts):
-        print('DNSPING %s:' % opts.ip, end='')
+        print(f'DNSPING {opts.ip}:', end='')
         if opts.hostname:
-            print('Name: %s' % opts.hostname)
+            print(f'Name: {opts.hostname}')
         else:
-            print('Name: *.%s' % opts.zone)
+            print(f'Name: *.{opts.zone}')
 
     def print_reply(self, opts, buf, rtt):
         dns = dpkt.dns.DNS(buf)

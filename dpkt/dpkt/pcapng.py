@@ -89,12 +89,12 @@ def _swap32b(i):
 def _align32b(i):
     """Return int `i` aligned to the 32-bit boundary"""
     r = i % 4
-    return i if not r else i + 4 - r
+    return i + 4 - r if r else i
 
 
 def _padded(s):
     """Return bytes `s` padded with zeroes to align to the 32-bit boundary"""
-    return struct_pack('%ss' % _align32b(len(s)), s)
+    return struct_pack(f'{_align32b(len(s))}s', s)
 
 
 def _padlen(s):
@@ -139,7 +139,7 @@ class _PcapngBlock(dpkt.Packet):
                 break
 
         # duplicate total length field
-        self._len = struct_unpack(self.__hdr_fmt__[0] + 'I', buf[-4:])[0]
+        self._len = struct_unpack(f'{self.__hdr_fmt__[0]}I', buf[-4:])[0]
         if self._len != self.len:
             raise dpkt.UnpackError('length fields do not match')
 
@@ -193,7 +193,7 @@ class PcapngOption(dpkt.Packet):
         if self.code == PCAPNG_OPT_COMMENT:
             text = getattr(self, 'text', self.data)
 
-            self.data = text.encode('utf-8') if not isinstance(text, bytes) else text
+            self.data = text if isinstance(text, bytes) else text.encode('utf-8')
 
         self.len = len(self.data)
         return dpkt.Packet.pack_hdr(self) + _padded(self.data)
@@ -435,7 +435,7 @@ class Reader(object):
             raise ValueError('IDB not found')
 
         # set timestamp resolution and offset
-        self._divisor = float(1e6)  # defaults
+        self._divisor = 1000000.0
         self._tsoffset = 0
         for opt in idb.opts:
             if opt.code == PCAPNG_OPT_IF_TSRESOL:
@@ -450,11 +450,7 @@ class Reader(object):
                 # timestamp of each packet
                 self._tsoffset = struct_unpack('<q' if self.__le else '>q', opt.data)[0]
 
-        if idb.linktype in dltoff:
-            self.dloff = dltoff[idb.linktype]
-        else:
-            self.dloff = 0
-
+        self.dloff = dltoff[idb.linktype] if idb.linktype in dltoff else 0
         self.idb = idb
         self.snaplen = idb.snaplen
         self.filter = ''

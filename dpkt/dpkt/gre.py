@@ -86,7 +86,7 @@ class GRE(dpkt.Packet):
         if fields:
             fmt = ''.join(fmts)
             fmtlen = struct.calcsize(fmt)
-            vals = struct.unpack("!" + fmt, self.data[:fmtlen])
+            vals = struct.unpack(f"!{fmt}", self.data[:fmtlen])
             self.data = self.data[fmtlen:]
             self.__dict__.update(dict(compat_izip(fields, vals)))
         if self.flags & GRE_RP:
@@ -112,9 +112,7 @@ class GRE(dpkt.Packet):
     def __bytes__(self):
         fields, fmts = self.opt_fields_fmts()
         if fields:
-            vals = []
-            for f in fields:
-                vals.append(getattr(self, f))
+            vals = [getattr(self, f) for f in fields]
             opt_s = struct.pack(b''.join(fmts), *vals)
         else:
             opt_s = b''

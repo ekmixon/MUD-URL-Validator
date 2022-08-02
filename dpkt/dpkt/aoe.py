@@ -75,7 +75,7 @@ def __load_cmds():
 
     for k, v in iteritems(g):
         if k.startswith(prefix):
-            name = 'aoe' + k[len(prefix):].lower()
+            name = f'aoe{k[len(prefix):].lower()}'
             try:
                 mod = __import__(name, g, level=1)
                 AOE.set_cmd(v, getattr(mod, name.upper()))

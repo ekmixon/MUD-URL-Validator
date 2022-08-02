@@ -25,11 +25,19 @@ def deprecated(deprecated_method, func_name=None):
         warnings.simplefilter('once', DeprecationWarning)
         # Display the deprecation warning message
         if func_name:  # If the function, should be used instead, is received
-            warnings.warn("Call to deprecated method %s; use %s instead" % (deprecated_method.__name__, func_name),
-                          category=DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                f"Call to deprecated method {deprecated_method.__name__}; use {func_name} instead",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
         else:
-            warnings.warn("Call to deprecated method %s" % deprecated_method.__name__,
-                          category=DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                f"Call to deprecated method {deprecated_method.__name__}",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
         return deprecated_method(*args, **kwargs)  # actually call the method
 
     return _deprecated

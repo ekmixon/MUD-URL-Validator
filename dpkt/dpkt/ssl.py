@@ -74,7 +74,7 @@ ssl3_versions_str = {
     TLS12_V: 'TLS 1.2'
 }
 
-SSL3_VERSION_BYTES = set((b'\x03\x00', b'\x03\x01', b'\x03\x02', b'\x03\x03'))
+SSL3_VERSION_BYTES = {b'\x03\x00', b'\x03\x01', b'\x03\x02', b'\x03\x03'}
 
 
 # Alert levels
@@ -419,11 +419,7 @@ RECORD_TYPES = {
 class SSLFactory(object):
     def __new__(cls, buf):
         v = buf[1:3]
-        if v in SSL3_VERSION_BYTES:
-            return TLSRecord(buf)
-        # SSL2 has no characteristic header or magic bytes, so we just assume
-        # that the msg is an SSL2 msg if it is not detected as SSL3+
-        return SSL2(buf)
+        return TLSRecord(buf) if v in SSL3_VERSION_BYTES else SSL2(buf)
 
 
 def tls_multi_factory(buf):
@@ -445,14 +441,13 @@ def tls_multi_factory(buf):
     msgs = []
     while i + 5 <= n:
         v = buf[i + 1:i + 3]
-        if v in SSL3_VERSION_BYTES:
-            try:
-                msg = TLSRecord(buf[i:])
-                msgs.append(msg)
-            except dpkt.NeedData:
-                break
-        else:
+        if v not in SSL3_VERSION_BYTES:
             raise SSL3Exception('Bad TLS version in buf: %r' % buf[i:i + 5])
+        try:
+            msg = TLSRecord(buf[i:])
+            msgs.append(msg)
+        except dpkt.NeedData:
+            break
         i += len(msg)
     return msgs, i
 
@@ -555,7 +550,7 @@ class TestTLSHandshake(object):
         cls.h = TLSHandshake(b'\x00\x00\x00\x01\xff')
 
     def test_created_inside_message(self):
-        assert (isinstance(self.h.data, TLSHelloRequest) == True)
+        assert isinstance(self.h.data, TLSHelloRequest)
 
     def test_length(self):
         assert (self.h.length == 0x01)
@@ -587,7 +582,7 @@ class TestClientHello(object):
     def test_client_hello_constructed(self):
         """Make sure the correct class was constructed"""
         # print self.p
-        assert (isinstance(self.p.data, TLSClientHello) == True)
+        assert isinstance(self.p.data, TLSClientHello)
 
     #   def testClientDateCorrect(self):
     #       self.assertEqual(self.p.random_unixtime, 1342710284)
@@ -621,7 +616,7 @@ class TestServerHello(object):
         cls.p = TLSHandshake(cls.data)
 
     def test_constructed(self):
-        assert (isinstance(self.p.data, TLSServerHello) == True)
+        assert isinstance(self.p.data, TLSServerHello)
 
     #    def testDateCorrect(self):
     #        self.assertEqual(self.p.random_unixtime, 1342710284)

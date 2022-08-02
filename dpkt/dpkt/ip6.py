@@ -66,11 +66,7 @@ class IP6(dpkt.Packet):
         # keeps the original order.
         self.all_extension_headers = []
 
-        if self.plen:
-            buf = self.data[:self.plen]
-        else:  # due to jumbo payload or TSO
-            buf = self.data
-
+        buf = self.data[:self.plen] if self.plen else self.data
         next_ext_hdr = self.nxt
 
         while next_ext_hdr in ext_hdrs:
@@ -103,7 +99,7 @@ class IP6(dpkt.Packet):
         return header_str
 
     def __bytes__(self):
-        if (self.p == 6 or self.p == 17 or self.p == 58) and not self.data.sum:
+        if self.p in [6, 17, 58] and not self.data.sum:
             # XXX - set TCP, UDP, and ICMPv6 checksums
             p = bytes(self.data)
             s = dpkt.struct.pack('>16s16sxBH', self.src, self.dst, self.nxt, len(p))
@@ -201,12 +197,13 @@ class IP6RoutingHeader(IP6ExtensionHeader):
 
         dpkt.Packet.unpack(self, buf)
 
-        addresses = []
         num_addresses = self.len // 2
         buf = buf[hdr_size:hdr_size + num_addresses * addr_size]
 
-        for i in range(num_addresses):
-            addresses.append(buf[i * addr_size: i * addr_size + addr_size])
+        addresses = [
+            buf[i * addr_size : i * addr_size + addr_size]
+            for i in range(num_addresses)
+        ]
 
         self.data = buf
         self.addresses = addresses

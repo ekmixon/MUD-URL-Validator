@@ -244,7 +244,7 @@ class IEEE80211(dpkt.Packet):
                 name = ie_decoder[ie_id][0]
             except KeyError:
                 parser = self.IE
-                name = 'ie_' + str(ie_id)
+                name = f'ie_{str(ie_id)}'
             ie = parser(buf)
 
             ie.data = buf[2:2 + ie.len]
@@ -271,11 +271,7 @@ class IEEE80211(dpkt.Packet):
             self.imm_blk_ack = (field >> 15) & 1
 
     def __init__(self, *args, **kwargs):
-        if kwargs and 'fcs' in kwargs:
-            self.fcs_present = kwargs.pop('fcs')
-        else:
-            self.fcs_present = False
-
+        self.fcs_present = kwargs.pop('fcs') if kwargs and 'fcs' in kwargs else False
         super(IEEE80211, self).__init__(*args, **kwargs)
 
     def unpack(self, buf):
@@ -331,7 +327,7 @@ class IEEE80211(dpkt.Packet):
         # Strip off the FCS field
         if self.fcs_present:
             self.fcs = struct.unpack('I', self.data[-1 * FCS_LENGTH:])[0]
-            self.data = self.data[0: -1 * FCS_LENGTH]
+            self.data = self.data[:-1 * FCS_LENGTH]
 
         if self.type == MGMT_TYPE:
             self.mgmt = self.MGMT_Frame(self.data)
@@ -346,7 +342,7 @@ class IEEE80211(dpkt.Packet):
             parser = decoder[self.type][self.subtype][1]
             name = decoder[self.type][self.subtype][0]
         except KeyError:
-            raise dpkt.UnpackError("KeyError: type=%s subtype=%s" % (self.type, self.subtype))
+            raise dpkt.UnpackError(f"KeyError: type={self.type} subtype={self.subtype}")
 
         if self.type == DATA_TYPE:
             # need to grab the ToDS/FromDS info
@@ -425,9 +421,9 @@ class IEEE80211(dpkt.Packet):
             self.ctl = socket.ntohs(self.ctl)
 
             if self.compressed:
-                self.bmp = struct.unpack('8s', self.data[0:_COMPRESSED_BMP_LENGTH])[0]
+                self.bmp = struct.unpack('8s', self.data[:_COMPRESSED_BMP_LENGTH])[0]
             else:
-                self.bmp = struct.unpack('128s', self.data[0:_BMP_LENGTH])[0]
+                self.bmp = struct.unpack('128s', self.data[:_BMP_LENGTH])[0]
             self.data = self.data[len(self.__hdr__) + len(self.bmp):]
 
     class RTS(dpkt.Packet):
@@ -524,7 +520,7 @@ class IEEE80211(dpkt.Packet):
                 decoder = action_parser[self.category][self.code][1]
                 field_name = action_parser[self.category][self.code][0]
             except KeyError:
-                raise dpkt.UnpackError("KeyError: category=%s code=%s" % (self.category, self.code))
+                raise dpkt.UnpackError(f"KeyError: category={self.category} code={self.code}")
 
             field = decoder(self.data)
             setattr(self, field_name, field)

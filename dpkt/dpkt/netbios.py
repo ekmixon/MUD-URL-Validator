@@ -14,8 +14,7 @@ def encode_name(name):
     l = []
     for c in struct.pack('16s', name):
         c = ord(c)
-        l.append(chr((c >> 4) + 0x41))
-        l.append(chr((c & 0xf) + 0x41))
+        l.extend((chr((c >> 4) + 0x41), chr((c & 0xf) + 0x41)))
     return ''.join(l)
 
 
@@ -23,10 +22,14 @@ def decode_name(nbname):
     """Return the NetBIOS first-level decoded nbname."""
     if len(nbname) != 32:
         return nbname
-    l = []
-    for i in range(0, 32, 2):
-        l.append(chr(((ord(nbname[i]) - 0x41) << 4) |
-                     ((ord(nbname[i + 1]) - 0x41) & 0xf)))
+    l = [
+        chr(
+            ((ord(nbname[i]) - 0x41) << 4)
+            | ((ord(nbname[i + 1]) - 0x41) & 0xF)
+        )
+        for i in range(0, 32, 2)
+    ]
+
     return ''.join(l).split('\x00', 1)[0]
 
 # RR types
@@ -112,7 +115,7 @@ class NS(dns.DNS):
                 num = ord(self.rdata[0])
                 off = 1
                 l = []
-                for i in range(num):
+                for _ in range(num):
                     name = self.rdata[off:off + 15].split(None, 1)[0].split('\x00', 1)[0]
                     service = ord(self.rdata[off + 15])
                     off += 16

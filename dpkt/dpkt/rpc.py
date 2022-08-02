@@ -104,8 +104,7 @@ class RPC(dpkt.Packet):
                     self.data = buf[12:]
 
             def __len__(self):
-                if self.stat == PROG_MISMATCH: n = 8
-                else: n = 0
+                n = 8 if self.stat == PROG_MISMATCH else 0
                 return len(self.verf) + 4 + n + len(self.data)
 
             def __bytes__(self):

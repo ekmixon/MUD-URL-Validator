@@ -69,7 +69,7 @@ class CDP(dpkt.Packet):
                 n = struct.unpack('>I', self.data[:4])[0]
                 buf = self.data[4:]
                 l = []
-                for i in range(n):
+                for _ in range(n):
                     a = CDP.Address(buf)
                     l.append(a)
                     buf = buf[len(a):]
@@ -86,7 +86,7 @@ class CDP(dpkt.Packet):
             self.len = len(self)
             if self.type == CDP_ADDRESS:
                 s = struct.pack('>I', len(self.data)) + \
-                    b''.join(map(bytes, self.data))
+                            b''.join(map(bytes, self.data))
             else:
                 s = self.data
             return self.pack_hdr() + s

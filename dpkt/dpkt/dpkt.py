@@ -123,9 +123,14 @@ class Packet(_MetaPacket("Temp", (object,), {})):
                     l.append('%s=%r' % (field_name, field_value))  # (1)
                 else:
                     # interpret _private fields as name of properties joined by underscores
-                    for prop_name in field_name.split('_'):        # (2)
-                        if isinstance(getattr(self.__class__, prop_name, None), property):
-                            l.append('%s=%r' % (prop_name, getattr(self, prop_name)))
+                    l.extend(
+                        '%s=%r' % (prop_name, getattr(self, prop_name))
+                        for prop_name in field_name.split('_')
+                        if isinstance(
+                            getattr(self.__class__, prop_name, None), property
+                        )
+                    )
+
         # (3)
         l.extend(
             ['%s=%r' % (attr_name, attr_value)
@@ -135,7 +140,7 @@ class Packet(_MetaPacket("Temp", (object,), {})):
         # (4)
         if self.data:
             l.append('data=%r' % self.data)
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(l))
+        return f"{self.__class__.__name__}({', '.join(l)})"
 
     def __str__(self):
         return str(self.__bytes__())

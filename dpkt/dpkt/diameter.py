@@ -78,11 +78,11 @@ class Diameter(dpkt.Packet):
     def unpack(self, buf):
         dpkt.Packet.unpack(self, buf)
         self.cmd = (compat_ord(self.cmd[0]) << 16) | \
-                    (compat_ord(self.cmd[1]) << 8) | \
-                    (compat_ord(self.cmd[2]))
+                        (compat_ord(self.cmd[1]) << 8) | \
+                        (compat_ord(self.cmd[2]))
         self.len = (compat_ord(self.len[0]) << 16) | \
-                    (compat_ord(self.len[1]) << 8) | \
-                    (compat_ord(self.len[2]))
+                        (compat_ord(self.len[1]) << 8) | \
+                        (compat_ord(self.len[2]))
         self.data = self.data[:self.len - self.__hdr_len__]
 
         l = []

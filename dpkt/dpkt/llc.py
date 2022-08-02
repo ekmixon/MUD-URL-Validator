@@ -42,14 +42,12 @@ class LLC(dpkt.Packet):
                 setattr(self, self.data.__class__.__name__.lower(), self.data)
             except (KeyError, dpkt.UnpackError):
                 pass
-        else:
-            # non-SNAP
-            if self.dsap == 0x06:  # SAP_IP
-                self.data = self.ip = Ethernet.get_type(ETH_TYPE_IP)(self.data)
-            elif self.dsap == 0x10 or self.dsap == 0xe0:  # SAP_NETWARE{1,2}
-                self.data = self.ipx = Ethernet.get_type(ETH_TYPE_IPX)(self.data)
-            elif self.dsap == 0x42:  # SAP_STP
-                self.data = self.stp = stp.STP(self.data)
+        elif self.dsap == 0x06:  # SAP_IP
+            self.data = self.ip = Ethernet.get_type(ETH_TYPE_IP)(self.data)
+        elif self.dsap in [0x10, 0xE0]:  # SAP_NETWARE{1,2}
+            self.data = self.ipx = Ethernet.get_type(ETH_TYPE_IPX)(self.data)
+        elif self.dsap == 0x42:  # SAP_STP
+            self.data = self.stp = stp.STP(self.data)
 
     def pack_hdr(self):
         buf = dpkt.Packet.pack_hdr(self)

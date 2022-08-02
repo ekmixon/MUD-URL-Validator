@@ -44,7 +44,7 @@ def print_packets(pcap):
     for timestamp, buf in pcap:
 
         # Print out the timestamp in UTC
-        print('Timestamp: ', str(datetime.datetime.utcfromtimestamp(timestamp)))
+        print('Timestamp: ', datetime.datetime.utcfromtimestamp(timestamp))
 
         # Unpack the Ethernet frame (mac src/dst, ethertype)
         eth = dpkt.ethernet.Ethernet(buf)

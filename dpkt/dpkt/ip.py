@@ -96,8 +96,12 @@ class IP(dpkt.Packet):
         self.len = self.__len__()
         if self.sum == 0:
             self.sum = dpkt.in_cksum(self.pack_hdr() + bytes(self.opts))
-            if (self.p == 6 or self.p == 17) and (self.off & (IP_MF | IP_OFFMASK)) == 0 and \
-                    isinstance(self.data, dpkt.Packet) and self.data.sum == 0:
+            if (
+                self.p in [6, 17]
+                and (self.off & (IP_MF | IP_OFFMASK)) == 0
+                and isinstance(self.data, dpkt.Packet)
+                and self.data.sum == 0
+            ):
                 # Set zeroed TCP and UDP checksums for non-fragments.
                 p = bytes(self.data)
                 s = dpkt.struct.pack('>4s4sxBH', self.src, self.dst,

@@ -75,7 +75,7 @@ def print_http_requests(pcap):
             fragment_offset = ip.off & dpkt.ip.IP_OFFMASK
 
             # Print out the info
-            print('Timestamp: ', str(datetime.datetime.utcfromtimestamp(timestamp)))
+            print('Timestamp: ', datetime.datetime.utcfromtimestamp(timestamp))
             print('Ethernet Frame: ', mac_addr(eth.src), mac_addr(eth.dst), eth.type)
             print('IP: %s -> %s   (len=%d ttl=%d DF=%d MF=%d offset=%d)' %
                   (inet_to_str(ip.src), inet_to_str(ip.dst), ip.len, ip.ttl, do_not_fragment, more_fragments, fragment_offset))

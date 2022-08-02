@@ -93,9 +93,9 @@ def testAIM():
 
     tlvCount = 0
     while tlvdata:
-        t, l, v, tlvdata = tlv(tlvdata)
         tlvCount += 1
         if tlvCount == 1:
+            t, l, v, tlvdata = tlv(tlvdata)
             # just check function return for first TLV
             assert t == 0x01
             assert l == 2

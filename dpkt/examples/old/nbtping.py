@@ -24,7 +24,7 @@ class NBTPing(ping.Ping):
             yield str(ns)
 
     def print_header(self, opts):
-        print('NBTPING %s:' % opts.ip)
+        print(f'NBTPING {opts.ip}:')
 
     def print_reply(self, opts, buf, rtt):
         ns = netbios.NS(buf)

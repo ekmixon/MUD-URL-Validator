@@ -174,20 +174,16 @@ class H225(dpkt.Packet):
             if self.type & 0x80:
                 n = 0
             else:
-                if self.type == USER_TO_USER:
-                    n = 2
-                else:
-                    n = 1
+                n = 2 if self.type == USER_TO_USER else 1
             return self.__hdr_len__ + self.len + n
 
         def __bytes__(self):
             if self.type & 0x80:
                 length_str = None
+            elif self.type == USER_TO_USER:
+                length_str = struct.pack('>H', self.len)
             else:
-                if self.type == USER_TO_USER:
-                    length_str = struct.pack('>H', self.len)
-                else:
-                    length_str = struct.pack('B', self.len)
+                length_str = struct.pack('B', self.len)
             return struct.pack('B', self.type) + length_str + self.data
 
 

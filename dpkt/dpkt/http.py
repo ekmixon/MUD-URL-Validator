@@ -33,7 +33,7 @@ def parse_headers(f):
         k = l[0].lower()
         v = len(l) != 1 and l[1].lstrip() or ''
         if k in d:
-            if not type(d[k]) is list:
+            if type(d[k]) is not list:
                 d[k] = [d[k]]
             d[k].append(v)
         else:
@@ -175,10 +175,10 @@ class Request(Message):
         if len(l) == 2:
             # HTTP/0.9 does not specify a version in the request line
             self.version = '0.9'
-        else:
-            if not l[2].startswith(self.__proto):
-                raise dpkt.UnpackError('invalid http version: %r' % l[2])
+        elif l[2].startswith(self.__proto):
             self.version = l[2][len(self.__proto) + 1:]
+        else:
+            raise dpkt.UnpackError('invalid http version: %r' % l[2])
         self.method = l[0]
         self.uri = l[1]
         Message.unpack(self, f.read())
@@ -394,9 +394,7 @@ def test_invalid_header():
     try:
         r = Request(s_messy_header)
     except dpkt.UnpackError:
-        assert True
-    # If the http request is built successfully or raised exceptions
-    # other than UnpackError, then return a false assertion.
+        pass
     except:
         assert False
     else:

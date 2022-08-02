@@ -73,9 +73,8 @@ class Ethernet(dpkt.Packet):
     def __init__(self, *args, **kwargs):
         dpkt.Packet.__init__(self, *args, **kwargs)
         # if data was given in kwargs, try to unpack it
-        if self.data: 
-            if isstr(self.data) or isinstance(self.data, bytes):
-                self._unpack_data(self.data)
+        if self.data and (isstr(self.data) or isinstance(self.data, bytes)):
+            self._unpack_data(self.data)
 
     def _unpack_data(self, buf):
         if self.type == ETH_TYPE_8021Q:
@@ -92,12 +91,12 @@ class Ethernet(dpkt.Packet):
             # backward compatibility, use the 1st tag
             self.vlanid, self.priority, self.cfi = self.vlan_tags[0].as_tuple()
 
-        elif self.type == ETH_TYPE_MPLS or self.type == ETH_TYPE_MPLS_MCAST:
+        elif self.type in [ETH_TYPE_MPLS, ETH_TYPE_MPLS_MCAST]:
             self.labels = []  # old list containing labels as tuples
             self.mpls_labels = []  # new list containing labels as instances of MPLSlabel
 
             # XXX - max # of labels is undefined, just use 24
-            for i in range(24):
+            for _ in range(24):
                 lbl = MPLSlabel(buf)
                 buf = buf[lbl.__hdr_len__:]
                 self.mpls_labels.append(lbl)
@@ -163,7 +162,7 @@ class Ethernet(dpkt.Packet):
             lbl.s = 1
 
             # set encapsulation type
-            if not (self.type == ETH_TYPE_MPLS or self.type == ETH_TYPE_MPLS_MCAST):
+            if self.type not in [ETH_TYPE_MPLS, ETH_TYPE_MPLS_MCAST]:
                 new_type = ETH_TYPE_MPLS
             tags_buf = b''.join(lbl.pack_hdr() for lbl in self.mpls_labels)
 
@@ -192,27 +191,24 @@ class Ethernet(dpkt.Packet):
             new_type = len(self.data)
 
         hdr_buf = dpkt.Packet.pack_hdr(self)[:-2] + struct.pack('>H', new_type)
-        if not is_isl:
-            return hdr_buf + tags_buf
-        else:
-            return tags_buf + hdr_buf
+        return tags_buf + hdr_buf if is_isl else hdr_buf + tags_buf
 
     def __str__(self):
         tail = b''
-        if isinstance(self.data, llc.LLC):
-            if hasattr(self, 'fcs'):
-                if self.fcs:
-                    fcs = self.fcs
-                else:
-                    # if fcs field is present but 0/None, then compute it and add to the tail
-                    fcs_buf = self.pack_hdr() + bytes(self.data) + getattr(self, 'trailer', '')
+        if isinstance(self.data, llc.LLC) and hasattr(self, 'fcs'):
+            if self.fcs:
+                fcs = self.fcs
+            else:
+                # if fcs field is present but 0/None, then compute it and add to the tail
+                fcs_buf = self.pack_hdr() + bytes(self.data) + getattr(self, 'trailer', '')
                     # if ISL header is present, exclude it from the calculation
-                    if getattr(self, 'vlan_tags', None):
-                        if isinstance(self.vlan_tags[0], VLANtagISL):
-                            fcs_buf = fcs_buf[VLANtagISL.__hdr_len__:]
-                    revcrc = crc32(fcs_buf) & 0xffffffff
-                    fcs = struct.unpack('<I', struct.pack('>I', revcrc))[0]  # bswap32
-                tail = getattr(self, 'trailer', b'') + struct.pack('>I', fcs)
+                if getattr(self, 'vlan_tags', None) and isinstance(
+                    self.vlan_tags[0], VLANtagISL
+                ):
+                    fcs_buf = fcs_buf[VLANtagISL.__hdr_len__:]
+                revcrc = crc32(fcs_buf) & 0xffffffff
+                fcs = struct.unpack('<I', struct.pack('>I', revcrc))[0]  # bswap32
+            tail = getattr(self, 'trailer', b'') + struct.pack('>I', fcs)
         return str(dpkt.Packet.__bytes__(self) + tail)
 
     def __len__(self):

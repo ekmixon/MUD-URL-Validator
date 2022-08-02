@@ -132,7 +132,7 @@ class Reader(object):
 
     def dispatch(self, cnt, callback, *args):
         if cnt > 0:
-            for i in range(cnt):
+            for _ in range(cnt):
                 ts, pkt = next(self)
                 callback(ts, pkt, *args)
         else:

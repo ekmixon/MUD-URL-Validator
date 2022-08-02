@@ -50,9 +50,7 @@ class RIP(dpkt.Packet):
         return n
 
     def __bytes__(self):
-        auth = b''
-        if self.auth:
-            auth = bytes(self.auth)
+        auth = bytes(self.auth) if self.auth else b''
         return self.pack_hdr() + auth + b''.join(map(bytes, self.rtes))
 
 

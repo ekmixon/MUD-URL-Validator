@@ -109,16 +109,13 @@ class Gzip(dpkt.Packet):
         if self.extra:
             self.flags |= GZIP_FEXTRA
             s = bytes(self.extra)
-            l.append(struct.pack('<H', len(s)))
-            l.append(s)
+            l.extend((struct.pack('<H', len(s)), s))
         if self.filename:
             self.flags |= GZIP_FNAME
-            l.append(self.filename)
-            l.append(b'\x00')
+            l.extend((self.filename, b'\x00'))
         if self.comment:
             self.flags |= GZIP_FCOMMENT
-            l.append(self.comment)
-            l.append(b'\x00')
+            l.extend((self.comment, b'\x00'))
         l.insert(0, super(Gzip, self).pack_hdr())
         return b''.join(l)
 

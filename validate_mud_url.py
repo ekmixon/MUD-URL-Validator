@@ -110,29 +110,28 @@ def validate_mud_url(url, source):
     """
     errs = 0
 
-    print('    MUD Option found in ' + source + ': ' + colored(url,'green'))
+    print(f'    MUD Option found in {source}: ' + colored(url,'green'))
     #print(url.encode('ascii'))
 
     if url[0] == '"':
         print(colored('        ERROR: MUD URL starts with a a quote (")','red'))
         print('               This is typically an error in the')
         print('               DHCP client configuration.')
-        errs = errs + 1
+        errs += 1
+    elif url.startswith ('https://'):
+        if not validators.url(url):
+            print(colored(f'        ERROR: {url}: Not a well formed URL.', 'red'))
+            print('               Ensure the MUD URL matches the format of:')
+            print('                   https://something.com/string/string/string.json')
+            print('               where "something.com" should be a domain name')
+            print('               and each "string" contains only legal characters')
+            print('               for a URL')
+            errs += 1
+
     else:
-        if not url.startswith ('https://'):
-            print(colored('        ERROR: MUD URL does not begin with https://','red'))
+        print(colored('        ERROR: MUD URL does not begin with https://','red'))
 
-            errs = errs + 1
-        else:
-            if not validators.url(url):
-                print(colored('        ERROR: ' + url + ': ' +  'Not a well formed URL.','red'))
-                print('               Ensure the MUD URL matches the format of:')
-                print('                   https://something.com/string/string/string.json')
-                print('               where "something.com" should be a domain name')
-                print('               and each "string" contains only legal characters')
-                print('               for a URL')
-                errs = errs + 1
-
+        errs += 1
     if url.find ('.well_known') > 0:
         print('        WARNING: A MUD URI should not have a ".well_known"')
         print('                component. This was present only in early ')
@@ -157,7 +156,7 @@ def is_iana_oui(timestamp, eth, tlv):
         return False;
 
     # Check the IEEE 802 OUI file. If not there, issue a warning.
-    if oui_file == None:
+    if oui_file is None:
         # Use a local copy, if available in the current directory.
         # Otherwise attempt to fetch it from the IEEE 802 server.
         # TODO: Check the file time, and if it's too old fetch it anyway
@@ -171,7 +170,7 @@ def is_iana_oui(timestamp, eth, tlv):
             oui_file = "http://standards-oui.ieee.org/oui.txt"
             print('\nFetching ', oui_file);
             cached_oui_file = wget.download(oui_file)
-            
+
         with open(cached_oui_file, 'r') as f:
             oui_file = f.read()
 
@@ -191,24 +190,22 @@ def check_lldp_frame(timestamp, eth):
     for tlv in lldp.tlvs:
         tlv_type = tlv.typelen >> 9
         tlv_len = tlv.typelen & 0x01ff
-        if tlv_type == 127:
-            # Found an Organization Specific TLV
-            if is_iana_oui(timestamp, eth, tlv) == True:
-                # Found an IANA OUI, but is the subtype correct (0x01)?
-                subtype=ord(str.join('', ('%c' %tlv.data[3])))
-                if subtype == exp_subtype:
-                    mud_url = str.join('',('%c'% i for i in (tlv.data[4:])))
-                    log_eth_packet(timestamp, eth)
-                    validate_mud_url(mud_url, 'LLDP')
-                    return True;
-                else:
-                    log_eth_packet(timestamp, eth)
-                    print('WARNING: LLDP frame with an IANA OUI found, but')
-                    print('         with a Subtype not a MUD URI.')
-                    print('             Subcode={0}'.format(hex(subtype)))
-                    print('         If this is meant to be a MUD URI TLV, it')
-                    print('         should be:')
-                    print('             Subcode={0}'.format(hex(exp_subtype)));
+        if tlv_type == 127 and is_iana_oui(timestamp, eth, tlv) == True:
+            # Found an IANA OUI, but is the subtype correct (0x01)?
+            subtype=ord(str.join('', ('%c' %tlv.data[3])))
+            if subtype == exp_subtype:
+                mud_url = str.join('',('%c'% i for i in (tlv.data[4:])))
+                log_eth_packet(timestamp, eth)
+                validate_mud_url(mud_url, 'LLDP')
+                return True;
+            else:
+                log_eth_packet(timestamp, eth)
+                print('WARNING: LLDP frame with an IANA OUI found, but')
+                print('         with a Subtype not a MUD URI.')
+                print('             Subcode={0}'.format(hex(subtype)))
+                print('         If this is meant to be a MUD URI TLV, it')
+                print('         should be:')
+                print('             Subcode={0}'.format(hex(exp_subtype)));
 
     return False
 
@@ -229,7 +226,7 @@ def check_dhcp_packet(timestamp, eth, udp):
                 break;
         elif opt[0] == 161:
             log_udp_packet(timestamp, eth, 'DHCP', msg_type)
-            mud_url = str.join('',('%c'% i for i in (opt[1][0:])))
+            mud_url = str.join('', ('%c'% i for i in opt[1][:]))
             validate_mud_url(mud_url, 'DHCP')
             return True
 
@@ -256,22 +253,29 @@ def check_radius_packet(timestamp, eth, udp):
             # octet (length).
             if tlv_data[0] == b'\x01':
                 data = tlv_data[2:]
-                if str.join('',('%c'% i for i in (data[0:9]))) == "lldp-tlv=":
+                if str.join('', ('%c' % i for i in data[:9])) == "lldp-tlv=":
                     #
                     # Found an LLDP TLV. See if it contains a MUD URL.
                     #   Two octets LLDP type (0x007f), followed by two octets
                     #   of length (which we ignore). Then look for the OUI
                     #   (0x00005e) and a subtype of 0x01.
-                    if data[9] == b'\x00' and data[10] == b'\x7f':
-                        if data[13] == b'\x00' and data[14] == b'\x00' and \
-                           data[15] == b'\x5e' and data[16] == b'\x01':
-                            mud_url = data[17:]
-                            log_udp_packet(timestamp, eth, 'RADIUS/LLDP TLV', 
-                                           msg_type)
-                            validate_mud_url(mud_url, 'Radius')
-                            return True
-                elif str.join('',('%c'% i for i in (data[0:12]))) == \
-                     "dhcp-option=":
+                    if (
+                        data[9] == b'\x00'
+                        and data[10] == b'\x7f'
+                        and data[13] == b'\x00'
+                        and data[14] == b'\x00'
+                        and data[15] == b'\x5e'
+                        and data[16] == b'\x01'
+                    ):
+                        mud_url = data[17:]
+                        log_udp_packet(timestamp, eth, 'RADIUS/LLDP TLV', 
+                                       msg_type)
+                        validate_mud_url(mud_url, 'Radius')
+                        return True
+                elif (
+                    str.join('', ('%c' % i for i in data[:12]))
+                    == "dhcp-option="
+                ):
                     #
                     # Found a DHCP Option. See if it contain a MUD URL.
                     #   Two octets DHCP option number (0x00a1), followed by
@@ -298,7 +302,7 @@ def find_mud_url(pcap):
            pcap: dpkt pcap reader object (dpkt.pcap.Reader)
     """
     found_url = 0 
-                    
+
     for timestamp, buf in pcap:
 
         eth = dpkt.ethernet.Ethernet(buf)
@@ -327,10 +331,10 @@ def find_mud_url(pcap):
         # ISE can use port 1645 or 1812 for RADIUS Authentication, and
         # port 1646 or 1813 for RADIUS Accounting.
         #
-        if udp.dport == 1645 or udp.dport == 1812 or \
-           udp.dport == 1646 or udp.dport == 1813:
-            if check_radius_packet(timestamp, eth, udp):
-                found_url = found_url + 1
+        if udp.dport in [1645, 1812, 1646, 1813] and check_radius_packet(
+            timestamp, eth, udp
+        ):
+            found_url = found_url + 1
 
 
     if found_url == 0:
